@@ -1,7 +1,4 @@
-import com.github.bhlangonijr.chesslib.Board;
-import com.github.bhlangonijr.chesslib.Piece;
-import com.github.bhlangonijr.chesslib.Side;
-import com.github.bhlangonijr.chesslib.Square;
+import com.github.bhlangonijr.chesslib.*;
 import com.github.bhlangonijr.chesslib.move.Move;
 
 import java.util.HashMap;
@@ -80,7 +77,7 @@ public class DecisionMaker {
                 Side side = currentPiece.getPieceSide();
                 int x = square.getFile().ordinal();
                 int y = (side == Side.WHITE) ? square.getRank().ordinal() : Math.abs(7 - square.getRank().ordinal());
-                if (currentPiece == Piece.WHITE_PAWN || currentPiece == Piece.BLACK_PAWN)
+                if (currentPiece.getPieceType() == PieceType.PAWN)
                     sum += (10.0 + PAWN_POSITIONAL_COEFFICIENTS[7 - y][x]) * (side == AIColor ? 1 : -1);
                 else if (currentPiece == Piece.WHITE_BISHOP || currentPiece == Piece.BLACK_BISHOP)
                     sum += (30.0 + BISHOP_POSITIONAL_COEFFICIENTS[7 - y][x]) * (side == AIColor ? 1 : -1);
@@ -101,13 +98,13 @@ public class DecisionMaker {
         return board.isDraw() || board.isMated();
     }
 
-    private boolean isTerminal(Board board, int depth) {
-        return isTerminal(board) || depth > MAX_AI_DEPTH;
+    private boolean isTerminal(Board board, int depth, int currentMaxDepth) {
+        return isTerminal(board) || depth > currentMaxDepth;
     }
 
-    private double maxValue(Board board, int depth, double alpha, double beta, Side AIColor) {
+    private double maxValue(Board board, int depth, double alpha, double beta, Side AIColor, int currentMaxDepth) {
         if(exploredPositions.containsKey(board.hashCode())) return exploredPositions.get(board.hashCode());
-        if (isTerminal(board, depth)) {
+        if (isTerminal(board, depth, currentMaxDepth)) {
             return eval(board, depth, AIColor);
         }
 
@@ -124,7 +121,7 @@ public class DecisionMaker {
         });
         for (Move legalMove : legalMoves) {
             board.doMove(legalMove);
-            currentValue = minValue(board, depth, alpha, beta, AIColor);
+            currentValue = minValue(board, depth + 1, alpha, beta, AIColor, currentMaxDepth);
             if (currentValue > value) {
                 nextMove = legalMove;
                 value = currentValue;
@@ -142,9 +139,9 @@ public class DecisionMaker {
         return value;
     }
 
-    private double minValue(Board board, int depth, double alpha, double beta, Side AIColor) {
+    private double minValue(Board board, int depth, double alpha, double beta, Side AIColor, int currentMaxDepth) {
         if(exploredPositions.containsKey(board.hashCode())) return exploredPositions.get(board.hashCode());
-        if (isTerminal(board, depth)) {
+        if (isTerminal(board, depth, currentMaxDepth)) {
             return eval(board, depth, AIColor);
         }
 
@@ -161,7 +158,7 @@ public class DecisionMaker {
         });
         for (Move legalMove : legalMoves) {
             board.doMove(legalMove);
-            currentValue = maxValue(board, depth + 1, alpha, beta, AIColor);
+            currentValue = maxValue(board, depth + 1, alpha, beta, AIColor, currentMaxDepth);
             if (currentValue < value) {
                 nextMove = legalMove;
                 value = currentValue;
@@ -180,7 +177,9 @@ public class DecisionMaker {
     }
 
     public boolean minimaxDecision(Board board, Side AIColor) {
-        maxValue(board, 0, Double.MIN_VALUE, Double.MAX_VALUE, AIColor);
+        for(int i = 1; i < MAX_AI_DEPTH; i++){
+            maxValue(board, 0, Double.MIN_VALUE, Double.MAX_VALUE, AIColor, i);
+        }
         return board.doMove(nextMove);
     }
 }
