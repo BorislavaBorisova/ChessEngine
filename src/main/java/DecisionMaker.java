@@ -7,7 +7,7 @@ import java.util.List;
 public class DecisionMaker {
     private Move nextMove = null;
     private HashMap<Integer, Double> exploredPositions;
-    public static final int MAX_AI_DEPTH = 4;
+    public static final int MAX_AI_DEPTH = 8;
     public static final double[][] KING_POSITIONAL_COEFFICIENTS= {{-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0},
             {-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0},
             {-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0},
@@ -61,6 +61,28 @@ public class DecisionMaker {
         exploredPositions = new HashMap<>();
     }
 
+    private double getWeight(Piece piece){
+        if(piece.getPieceType() == PieceType.KNIGHT || piece.getPieceType() == PieceType.BISHOP) return 30.0;
+        if(piece.getPieceType() == PieceType.ROOK) return 50.0;
+        if(piece.getPieceType() == PieceType.QUEEN) return 90.0;
+        if(piece.getPieceType() == PieceType.KING) return 900.0;
+        else return 10.0;
+    }
+
+    private int weightComparator(Move move1, Move move2, Board board){
+        boolean isCaptureMove1 = Helpers.isCapture(move1, board), isCaptureMove2 = Helpers.isCapture(move2, board);
+        if(isCaptureMove1 && isCaptureMove2){
+            double diff1 = getWeight(board.getPiece(move1.getTo())) - getWeight(board.getPiece(move1.getFrom()));
+            double diff2 = getWeight(board.getPiece(move2.getTo())) - getWeight(board.getPiece(move2.getFrom()));
+            if(diff1 > diff2) return -1;
+            if(diff1 < diff2) return 1;
+            return 0;
+        }
+        if(isCaptureMove1) return -1; //!isCaptureMove2 && isCaptureMove1
+        if(isCaptureMove2) return 1; //isCaptureMove2 && !isCaptureMove1
+        return 0; //!isCaptureMove2 && !isCaptureMove1
+    }
+
     public double eval(Board board, int depth, Side AIColor) {
         Side turnSide = board.getSideToMove();
         if (board.isMated()) {
@@ -79,15 +101,15 @@ public class DecisionMaker {
                 int y = (side == Side.WHITE) ? square.getRank().ordinal() : Math.abs(7 - square.getRank().ordinal());
                 if (currentPiece.getPieceType() == PieceType.PAWN)
                     sum += (10.0 + PAWN_POSITIONAL_COEFFICIENTS[7 - y][x]) * (side == AIColor ? 1 : -1);
-                else if (currentPiece == Piece.WHITE_BISHOP || currentPiece == Piece.BLACK_BISHOP)
+                else if (currentPiece.getPieceType() == PieceType.BISHOP)
                     sum += (30.0 + BISHOP_POSITIONAL_COEFFICIENTS[7 - y][x]) * (side == AIColor ? 1 : -1);
-                else if (currentPiece == Piece.WHITE_KNIGHT || currentPiece == Piece.BLACK_KNIGHT)
+                else if (currentPiece.getPieceType() == PieceType.KNIGHT)
                     sum += (30.0 + KNIGHT_POSITIONAL_COEFFICIENTS[7 - y][x]) * (side == AIColor ? 1 : -1);
-                else if (currentPiece == Piece.WHITE_ROOK || currentPiece == Piece.BLACK_ROOK)
+                else if (currentPiece.getPieceType() == PieceType.ROOK)
                     sum += (50.0 + ROOK_POSITIONAL_COEFFICIENTS[7 - y][x]) * (side == AIColor ? 1 : -1);
-                else if (currentPiece == Piece.WHITE_QUEEN || currentPiece == Piece.BLACK_QUEEN)
+                else if (currentPiece.getPieceType() == PieceType.QUEEN)
                     sum += (90.0 + QUEEN_POSITIONAL_COEFFICIENTS[7 - y][x]) * (side == AIColor ? 1 : -1);
-                else if (currentPiece == Piece.WHITE_KING || currentPiece == Piece.BLACK_KING)
+                else if (currentPiece.getPieceType() == PieceType.KING)
                     sum += (900.0 + KING_POSITIONAL_COEFFICIENTS[7 - y][x]) * (side == AIColor ? 1 : -1);
             }
         }
@@ -113,12 +135,14 @@ public class DecisionMaker {
         double currentValue;
 
         List<Move> legalMoves = board.legalMoves();
-        legalMoves.sort((move1, move2)->{
-            boolean isCaptureMove1 = Helpers.isCapture(move1, board), isCaptureMove2 = Helpers.isCapture(move2, board);
-            if(isCaptureMove1 && !isCaptureMove2) return -1;
-            if(isCaptureMove2 && !isCaptureMove1) return 1;
-            return 0;
-        });
+        legalMoves.sort((move1, move2) -> weightComparator(move1, move2, board));
+//              old comparator
+//        {
+//            boolean isCaptureMove1 = Helpers.isCapture(move1, board), isCaptureMove2 = Helpers.isCapture(move2, board);
+//            if(isCaptureMove1 && !isCaptureMove2) return -1;
+//            if(isCaptureMove2 && !isCaptureMove1) return 1;
+//            return 0;
+//        }
         for (Move legalMove : legalMoves) {
             board.doMove(legalMove);
             currentValue = minValue(board, depth + 1, alpha, beta, AIColor, currentMaxDepth);
@@ -150,12 +174,7 @@ public class DecisionMaker {
         double currentValue;
 
         List<Move> legalMoves = board.legalMoves();
-        legalMoves.sort((move1, move2)->{
-            boolean isCaptureMove1 = Helpers.isCapture(move1, board), isCaptureMove2 = Helpers.isCapture(move2, board);
-            if(isCaptureMove1 && !isCaptureMove2) return -1;
-            if(isCaptureMove2 && !isCaptureMove1) return 1;
-            return 0;
-        });
+        legalMoves.sort((move1, move2) -> weightComparator(move1, move2, board));
         for (Move legalMove : legalMoves) {
             board.doMove(legalMove);
             currentValue = maxValue(board, depth + 1, alpha, beta, AIColor, currentMaxDepth);
