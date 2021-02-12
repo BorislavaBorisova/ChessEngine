@@ -8,6 +8,8 @@ public class DecisionMaker {
     private Move nextMove = null;
     private HashMap<Integer, Move> exploredPositions;
     public static final int MAX_AI_DEPTH = 8;
+    public static final long MAX_AI_TIME = 30000000000L;
+
     public static final double[][] KING_POSITIONAL_COEFFICIENTS = { { -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0 },
             { -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0 },
             { -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0 },
@@ -247,9 +249,13 @@ public class DecisionMaker {
         int iterationDepthInitialValue = 1;
         if (exploredPositions.containsKey(board.hashCode()))
             iterationDepthInitialValue = MAX_AI_DEPTH - 2;
-        for (int i = iterationDepthInitialValue; i < MAX_AI_DEPTH; i++) {
-            maxValue(board, 0, Double.MIN_VALUE, Double.MAX_VALUE, AIColor, i);
-        }
+        long startTime = System.nanoTime(), stopTime, timeDiff;
+        do {
+            maxValue(board, 0, Double.MIN_VALUE, Double.MAX_VALUE, AIColor, iterationDepthInitialValue);
+            stopTime = System.nanoTime();
+            timeDiff = stopTime - startTime;
+            iterationDepthInitialValue++;
+        } while(timeDiff < MAX_AI_TIME);
         return board.doMove(nextMove);
     }
 }

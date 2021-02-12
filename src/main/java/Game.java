@@ -66,18 +66,6 @@ public class Game {
 
     public static void main(String[] args) {
         new Game().play();
-//        Board b = new Board();
-//        b.doMove(new Move(Square.E2, Square.E4));
-//        System.out.println(new DecisionMaker().eval(b, 0, Side.BLACK));
     }
 }
-//
-//        // Creates a new chessboard in the standard initial position
-//        Board board = new Board();
-//
-//        //Make a move from E2 to E4 squares
-//        board.doMove(new Move(Square.E2, Square.E4));
-//
-//        //print the chessboard in a human-readable form
-//        System.out.println(board.toString());
 
