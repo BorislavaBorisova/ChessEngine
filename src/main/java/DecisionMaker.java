@@ -3,6 +3,7 @@ import com.github.bhlangonijr.chesslib.move.Move;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DecisionMaker {
     private Move nextMove = null;
@@ -99,7 +100,7 @@ public class DecisionMaker {
     public double eval(Board board, int depth, Side AIColor) {
         Side turnSide = board.getSideToMove();
         if (board.isMated()) {
-            return 200.0 * (turnSide == AIColor ? -1 : 1);
+            return 2000.0 * (turnSide == AIColor ? -1 : 1);
         } else if (board.isDraw()) {
             return 0.0;
         }
@@ -137,9 +138,87 @@ public class DecisionMaker {
         return isTerminal(board) || depth > currentMaxDepth;
     }
 
+    private double quiescenceMaxValue(Board board, int depth, double alpha, double beta, Side AIColor, int currentMaxDepth){
+        if (isTerminal(board)) {
+            return eval(board, depth, AIColor);
+        }
+
+        double value = -Double.MAX_VALUE;
+        Move nextMove = null;
+        double currentValue;
+
+        List<Move> legalMoves = board.legalMoves();
+        legalMoves = legalMoves.stream().filter(move -> Helpers.isCapture(move, board) || Helpers.isMoveCheck(move, board)).collect(Collectors.toList());
+        legalMoves.sort((move1, move2) -> weightComparator(move1, move2, board));
+        if (exploredPositions.containsKey(board.hashCode())) {
+            Move exploredMove = exploredPositions.get(board.hashCode());
+            int idx = legalMoves.indexOf(exploredMove);
+            if (idx != -1) {
+                legalMoves.remove(idx);
+                legalMoves.add(0, exploredMove);
+            }
+        }
+        for (Move legalMove : legalMoves) {
+            board.doMove(legalMove);
+            currentValue = quiescenceMinValue(board, depth + 1, alpha, beta, AIColor, currentMaxDepth);
+            if (currentValue > value) {
+                nextMove = legalMove;
+                value = currentValue;
+            }
+            board.undoMove();
+            if (value >= beta) {
+                break;
+            }
+            if (value > alpha) {
+                alpha = value;
+            }
+        }
+        this.nextMove = nextMove;
+        return value;
+    }
+
+    private double quiescenceMinValue(Board board, int depth, double alpha, double beta, Side AIColor, int currentMaxDepth){
+        if (isTerminal(board)) {
+            return eval(board, depth, AIColor);
+        }
+
+        double value = Double.MAX_VALUE;
+        Move nextMove = null;
+        double currentValue;
+
+        List<Move> legalMoves = board.legalMoves();
+        legalMoves = legalMoves.stream().filter(move -> Helpers.isCapture(move, board) || Helpers.isMoveCheck(move, board)).collect(Collectors.toList());
+        legalMoves.sort((move1, move2) -> weightComparator(move1, move2, board));
+        if (exploredPositions.containsKey(board.hashCode())) {
+            Move exploredMove = exploredPositions.get(board.hashCode());
+            int idx = legalMoves.indexOf(exploredMove);
+            if (idx != -1) {
+                legalMoves.remove(idx);
+                legalMoves.add(0, exploredMove);
+            }
+        }
+        for (Move legalMove : legalMoves) {
+            board.doMove(legalMove);
+            currentValue = quiescenceMaxValue(board, depth + 1, alpha, beta, AIColor, currentMaxDepth);
+            if (currentValue < value) {
+                nextMove = legalMove;
+                value = currentValue;
+            }
+            board.undoMove();
+            if (value <= alpha) {
+                break;
+            }
+            if (value < beta) {
+                beta = value;
+            }
+        }
+        this.nextMove = nextMove;
+        return value;
+    }
+
     private double maxValue(Board board, int depth, double alpha, double beta, Side AIColor, int currentMaxDepth) {
         if (isTerminal(board, depth, currentMaxDepth)) {
-            return eval(board, depth, AIColor);
+            return eval(board, depth, AIColor); //quiescenceMaxValue()
         }
 
         double value = -Double.MAX_VALUE;
