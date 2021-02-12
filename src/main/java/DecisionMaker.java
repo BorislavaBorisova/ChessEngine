@@ -244,7 +244,10 @@ public class DecisionMaker {
     }
 
     public boolean minimaxDecision(Board board, Side AIColor) {
-        for (int i = 1; i < MAX_AI_DEPTH; i++) {
+        int iterationDepthInitialValue = 1;
+        if (exploredPositions.containsKey(board.hashCode()))
+            iterationDepthInitialValue = MAX_AI_DEPTH - 2;
+        for (int i = iterationDepthInitialValue; i < MAX_AI_DEPTH; i++) {
             maxValue(board, 0, Double.MIN_VALUE, Double.MAX_VALUE, AIColor, i);
         }
         return board.doMove(nextMove);
